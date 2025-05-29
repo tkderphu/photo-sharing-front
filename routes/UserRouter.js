@@ -9,6 +9,7 @@ router.post("/user", async (request, response) => {
         login_name: login_name
     })
 
+    
     if(user) {
         response.status(400).send("User exists in db")
     } else {

@@ -1,19 +1,20 @@
 const express = require("express");
 const Photo = require("../db/photoModel");
 const User = require("../db/userModel");
-const { parseFileMiddleWare } = require("../middleware/middleware");
+const { parseFileMiddleWare, authMiddleWare } = require("../middleware/middleware");
 const router = express.Router();
-import path from 'path';
-import fs from 'fs';
+const path = require('path')
+const fs = require("fs")
 
 
 
-router.post("/posts/new", parseFileMiddleWare, async (req, res) => {
+router.post("/posts/new", authMiddleWare, parseFileMiddleWare.single("file"), async (req, res) => {
     try {
         if (!req.file) {
             res.status(400).send({ msg: "you must send file" })
         } else {
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+            const userId = req.userId
+            const uniqueSuffix = Date.now() + '-' + userId;
             const ext = path.extname(req.file.originalname); // e.g., ".jpg"
             const fileName = `${uniqueSuffix}${ext}`;
             const outputPath = path.join(__dirname, '..', 'images', fileName);
@@ -26,7 +27,7 @@ router.post("/posts/new", parseFileMiddleWare, async (req, res) => {
             fs.writeFileSync(outputPath, req.file.buffer);
             
             const photo = new Photo({
-                user_id: "",
+                user_id: userId,
                 file_name: fileName
             })
 
@@ -42,6 +43,7 @@ router.post("/posts/new", parseFileMiddleWare, async (req, res) => {
 })
 
 router.post("/commentsOfPhoto/:photo_id", async (req, res) => {
+    const userId = req.userId
     const { photo_id } = req.params
     const { comment } = req.body
     const photo = await Photo.findById(photo_id)
@@ -50,10 +52,11 @@ router.post("/commentsOfPhoto/:photo_id", async (req, res) => {
     } else {
         photo.comments.push({
             comment: comment,
-            user_id: new mongoose.Types.ObjectId('userId')
+            user_id: userId
         })
         await photo.save()
         console.log("added new comment")
+        res.status(200).send({msg: "added new comment"})
     }
 })
 
